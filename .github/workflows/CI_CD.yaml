@@ -7,7 +7,7 @@ on:
 
 jobs:
   dvc_repro:
-    runs-on: ubuntu-latest  # Use Ubuntu for DVC step
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -18,7 +18,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install dvc[all]
-          sudo apt-get update && sudo apt-get install -y awscli
+          pip install awscli  # Cài đặt AWS CLI bằng pip
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region ${{ secrets.AWS_REGION }}  # Nếu cần, bạn có thể thêm khu vực AWS
       - name: Check S3 access
         run: aws s3 ls
       - name: Pull data with DVC
