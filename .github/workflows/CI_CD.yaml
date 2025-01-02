@@ -3,75 +3,81 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - main
+      - main  # Workflow chạy khi có thay đổi trên nhánh main
 
 jobs:
+  # Bước DVC
   dvc_repro:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2  # Checkout mã nguồn từ repository
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12.7'
+          python-version: '3.12.7'  # Cài đặt Python phiên bản 3.12.7
       - name: Install dependencies
         run: |
-          pip install dvc[all]
-          pip install awscli
+          pip install dvc[all]  # Cài đặt DVC với tất cả các plugin
+          pip install awscli  # Cài đặt AWS CLI
       - name: Configure AWS CLI
         run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}  # Cấu hình AWS CLI bằng secrets
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set default.region ${{ secrets.AWS_REGION }}
       - name: Check S3 access
-        run: aws s3 ls
+        run: aws s3 ls  # Kiểm tra quyền truy cập vào S3
       - name: Pull data with DVC
-        run: dvc pull
+        run: dvc pull  # Tải dữ liệu từ DVC remote storage
       - name: Reproduce DVC pipeline
-        run: dvc repro
+        run: dvc repro  # Tái tạo pipeline DVC
       - name: Push results to DVC remote storage
-        run: dvc push
+        run: dvc push  # Đẩy kết quả lên DVC remote storage
       - name: Upload models as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3  # Upload mô hình dưới dạng artifact
         with:
-          name: models
+          name: models  # Tên artifact
           path: models/  # Đảm bảo thư mục models được chỉ định đúng
-
+"""
+  # Bước kiểm thử
   test:
     runs-on: ubuntu-latest
-    needs: dvc_repro  # Đảm bảo mô hình có sẵn trước khi chạy bài kiểm tra
+    needs: dvc_repro  # Đảm bảo job này chỉ chạy sau khi bước DVC hoàn thành
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2  # Checkout mã nguồn từ repository
       - name: Download model artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v3  # Tải artifact mô hình đã upload từ bước DVC
         with:
           name: models  # Bước này đảm bảo mô hình có sẵn trong job kiểm tra
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12.7'
+          python-version: '3.12.7'  # Cài đặt Python phiên bản 3.12.7
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt  # Cài đặt tất cả các phụ thuộc từ requirements.txt
       - name: Run tests
-        run: pytest tests/
-
-
+        run: pytest tests/  # Chạy tất cả các unit test trong thư mục tests
+"""
+  # Bước Docker
   build_docker:
-    runs-on: ubuntu-latest  # Use Ubuntu for Docker setup
-    needs: test  # Only run after test job is complete
+    runs-on: ubuntu-latest  # Sử dụng Ubuntu cho thiết lập Docker
+    needs: test  # Đảm bảo job này chỉ chạy sau khi bước kiểm tra hoàn thành
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2  # Checkout mã nguồn từ repository
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v2  # Cài đặt Docker Buildx
+
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v2  # Đăng nhập vào Docker Hub
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # GitHub Secrets for Docker credentials
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_USERNAME }}  # Tên người dùng Docker Hub từ GitHub Secrets
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Mật khẩu hoặc token truy cập Docker Hub từ GitHub Secrets
+
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }} .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .  # Xây dựng Docker image từ Dockerfile trong thư mục gốc
+
       - name: Push Docker image
-        run: docker push ${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest  # Đẩy Docker image lên Docker Hub
