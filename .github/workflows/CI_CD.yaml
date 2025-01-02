@@ -9,9 +9,8 @@ on:
       - main
 
 jobs:
-  # Bước dvc
   dvc_repro:
-    runs-on: ubuntu-latest  # Sử dụng Ubuntu môi trường
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -24,34 +23,37 @@ jobs:
       - name: Install DVC and AWS CLI
         run: |
           pip install dvc[all]
-          pip install awscli  # Cài đặt AWS CLI bằng pip
+          pip install awscli
 
       - name: Configure AWS credentials
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ap-southeast-2  # Thiết lập khu vực nếu cần
+          aws configure set region ap-southeast-2
 
       - name: Check AWS S3 access
-        run: aws s3 ls  # Kiểm tra quyền truy cập S3
+        run: aws s3 ls
 
       - name: Pull data from remote storage
-        run: dvc pull  # Tải dữ liệu từ remote storage
+        run: dvc pull
 
       - name: Reproduce DVC pipeline
-        run: dvc repro  # Train lại mô hình
+        run: dvc repro
 
       - name: Push results to remote storage
-        run: dvc push  # Đẩy kết quả mới lên remote storage
+        run: dvc push
 
-    outputs:
-      models: models/
-      data: data/
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: house-price-model
+          path: models/house_price_model.pkl
+
 
   # Bước kiểm thử
   test:
     runs-on: ubuntu-latest
-    needs: dvc_repro  # Đảm bảo dvc_repro chạy trước
+    needs: dvc_repro
 
     steps:
       - name: Checkout code
@@ -62,23 +64,37 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Download model artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: house-price-model
+          path: models/
+
+      - name: Verify model file
+        run: |
+          ls models/
+          if [ ! -f models/house_price_model.pkl ]; then
+            echo "Model file not found!";
+            exit 1;
+          fi
+
       - name: Install dependencies
-        run: pip install -r requirements.txt  # Cài đặt các phụ thuộc
+        run: pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest tests/  # Chạy tất cả các unit test trong thư mục tests
+        run: pytest tests/
 
       - name: Upload test reports as artifacts
-        uses: actions/upload-artifact@v3  # Cập nhật lên phiên bản mới nhất v3
+        uses: actions/upload-artifact@v3
         with:
           name: test-reports
-          path: tests/reports  # Đảm bảo thư mục này tồn tại trong quá trình chạy
+          path: tests/reports
+
 
   # Bước Docker
   build_docker:
     runs-on: ubuntu-latest
-    needs: [dvc_repro, test]  # Chạy sau khi dvc_repro và test hoàn tất
-
+    needs: [dvc_repro, test]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -86,7 +102,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Log in to Docker Registry
+      - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -94,8 +110,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:$GITHUB_SHA .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/myproject:${{ github.sha }} .
 
-      - name: Push Docker image
+      - name: Push Docker image to Docker Hub
         run: |
-          docker push $CI_REGISTRY/$CI_PROJECT_PATH:$GITHUB_SHA
+          docker push ${{ secrets.DOCKER_USERNAME }}/myproject:${{ github.sha }}
