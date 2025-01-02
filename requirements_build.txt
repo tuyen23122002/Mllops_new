@@ -1,0 +1,9 @@
+# external requirements
+pre-commit==2.20.0
+great_expectations==0.15.23
+scikit-learn
+streamlit
+pandas
+numpy
+joblib
+# python 3.10

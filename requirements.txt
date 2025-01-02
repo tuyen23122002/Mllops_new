@@ -1,0 +1,13 @@
+# external requirements
+dvc==2.26.2
+pre-commit==2.20.0
+great_expectations==0.15.23
+dvc-s3
+scikit-learn
+streamlit
+pandas
+numpy
+joblib
+pytest
+mkdocs
+# python 3.10

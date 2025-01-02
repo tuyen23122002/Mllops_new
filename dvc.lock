@@ -1,0 +1,53 @@
+schema: '2.0'
+stages:
+  process_data:
+    cmd: python -m src.data.make_dataset
+    deps:
+    - path: data/raw
+      md5: 209cbfa8bf30fe5a263ec374799ebc94.dir
+      size: 700283900
+      nfiles: 5
+    - path: src/data/make_dataset.py
+      md5: 470363973495e9c3e226c0056b8737bd
+      size: 1339
+    outs:
+    - path: data/processed
+      md5: 14b417961d8a1275bedaae928d6adc07.dir
+      size: 455133
+      nfiles: 4
+  train:
+    cmd: python -m src.models.train_model
+    deps:
+    - path: data/processed
+      md5: 14b417961d8a1275bedaae928d6adc07.dir
+      size: 455133
+      nfiles: 4
+    - path: src/models/train_model.py
+      md5: b4c4f28aa86df5e084de656070cff418
+      size: 3890
+    outs:
+    - path: models
+      md5: 1233fb249c6b0304ca750d239b74b1ca.dir
+      size: 10360637
+      nfiles: 2
+    - path: reports/training_metrics.csv
+      md5: ab649075e0537603377ed113c6b24a82
+      size: 48
+  eval:
+    cmd: python -m src.models.predict_model
+    deps:
+    - path: data/processed
+      md5: 14b417961d8a1275bedaae928d6adc07.dir
+      size: 455133
+      nfiles: 4
+    - path: models
+      md5: 1233fb249c6b0304ca750d239b74b1ca.dir
+      size: 10360637
+      nfiles: 2
+    - path: src/models/predict_model.py
+      md5: 2af27d2eeb73dd37377b49a0d324f69b
+      size: 2194
+    outs:
+    - path: reports/metrics.csv
+      md5: e54ce962fda7403c34a342ddd28b6e64
+      size: 48

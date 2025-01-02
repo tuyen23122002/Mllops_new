@@ -1,0 +1,19 @@
+site_name: House Prices Documentation
+site_url: https://example.com
+
+nav:
+  - Home: index.md
+  - Data: data.md
+  - Models: models.md
+  # - Notebooks: notebooks.md
+  - Reports: reports.md
+
+theme:
+  name: material
+
+markdown_extensions:
+  - toc:
+      permalink: true
+
+plugins:
+  - search

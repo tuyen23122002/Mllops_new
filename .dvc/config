@@ -1,0 +1,4 @@
+[core]
+    remote = my_s3_bucket
+['remote "my_s3_bucket"']
+    url = s3://house-price-ngocnamk3er
