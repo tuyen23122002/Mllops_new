@@ -62,7 +62,7 @@ jobs:
   # Bước Docker
   build_docker:
     runs-on: ubuntu-latest  # Sử dụng Ubuntu cho thiết lập Docker
-    needs: test  # Đảm bảo job này chỉ chạy sau khi bước kiểm tra hoàn thành
+    needs: dvc_repro  # Đảm bảo job này chỉ chạy sau khi bước kiểm tra hoàn thành
     steps:
       - name: Checkout code
         uses: actions/checkout@v2  # Checkout mã nguồn từ repository
