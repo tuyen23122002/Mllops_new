@@ -1,117 +1,77 @@
-name: CI Workflow
+name: CI Pipeline
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   dvc_repro:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use Ubuntu for DVC step
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12'
-
-      - name: Install DVC and AWS CLI
+          python-version: '3.12.7'
+      - name: Install dependencies
         run: |
           pip install dvc[all]
-          pip install awscli
-
-      - name: Configure AWS credentials
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ap-southeast-2
-
-      - name: Check AWS S3 access
+          sudo apt-get update && sudo apt-get install -y awscli
+      - name: Check S3 access
         run: aws s3 ls
-
-      - name: Pull data from remote storage
+      - name: Pull data with DVC
         run: dvc pull
-
       - name: Reproduce DVC pipeline
         run: dvc repro
-
-      - name: Push results to remote storage
+      - name: Push results to DVC remote storage
         run: dvc push
-
-      - name: Upload model artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload models as artifact
+        uses: actions/upload-artifact@v2
         with:
-          name: house-price-model
-          path: models/house_price_model.pkl
+          name: models
+          path: models/
+      - name: Upload data as artifact (optional)
+        uses: actions/upload-artifact@v2
+        with:
+          name: data
+          path: data/
 
-
-  # Bước kiểm thử
   test:
-    runs-on: ubuntu-latest
-    needs: dvc_repro
-
+    runs-on: ubuntu-latest  # Use Ubuntu for testing
+    needs: dvc_repro  # Only run after dvc_repro job is complete
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12'
-
-      - name: Download model artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: house-price-model
-          path: models/
-
-      - name: Verify model file
-        run: |
-          ls models/
-          if [ ! -f models/house_price_model.pkl ]; then
-            echo "Model file not found!";
-            exit 1;
-          fi
-
+          python-version: '3.12.7'
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Run tests
         run: pytest tests/
-
-      - name: Upload test reports as artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload test reports
+        uses: actions/upload-artifact@v2
         with:
           name: test-reports
-          path: tests/reports
+          path: tests/reports/
 
-
-  # Bước Docker
   build_docker:
-    runs-on: ubuntu-latest
-    needs: [dvc_repro, test]
+    runs-on: ubuntu-latest  # Use Ubuntu for Docker setup
+    needs: test  # Only run after test job is complete
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: ${{ secrets.DOCKER_USERNAME }}  # GitHub Secrets for Docker credentials
           password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Build Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/myproject:${{ github.sha }} .
-
-      - name: Push Docker image to Docker Hub
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/myproject:${{ github.sha }}
+        run: docker build -t ${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }} .
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
