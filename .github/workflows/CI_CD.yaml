@@ -38,27 +38,7 @@ jobs:
         with:
           name: models  # Tên artifact
           path: models/  # Đảm bảo thư mục models được chỉ định đúng
-"""
-  # Bước kiểm thử
-  test:
-    runs-on: ubuntu-latest
-    needs: dvc_repro  # Đảm bảo job này chỉ chạy sau khi bước DVC hoàn thành
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2  # Checkout mã nguồn từ repository
-      - name: Download model artifact
-        uses: actions/download-artifact@v3  # Tải artifact mô hình đã upload từ bước DVC
-        with:
-          name: models  # Bước này đảm bảo mô hình có sẵn trong job kiểm tra
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.12.7'  # Cài đặt Python phiên bản 3.12.7
-      - name: Install dependencies
-        run: pip install -r requirements.txt  # Cài đặt tất cả các phụ thuộc từ requirements.txt
-      - name: Run tests
-        run: pytest tests/  # Chạy tất cả các unit test trong thư mục tests
-"""
+
   # Bước Docker
   build_docker:
     runs-on: ubuntu-latest  # Sử dụng Ubuntu cho thiết lập Docker
